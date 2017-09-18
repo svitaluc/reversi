@@ -1,0 +1,7 @@
+canvas {
+    border: solid 1px black;
+    box-shadow: 5px 5px 5px black;
+    position: relative;
+    width: 512px;
+    height: 512px;
+}
