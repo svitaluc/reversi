@@ -39,7 +39,34 @@ function renderDisk(x, y) {
     ctx.fill();
 }
 
-function renderSquare(x, y) {
+function animateChange(x, y){
+    var endPercent = 110;
+    var currentPercent = 0;
+    ctx.lineWidth = 10;
+
+    function animate(current) {
+        ctx.beginPath();
+        if(state.board[y][x].charAt(0) === 'w') {
+            ctx.strokeStyle = '#fff';
+        } else {
+            ctx.strokeStyle = '#000';
+        }
+        ctx.arc(x*size+size/2, y*size+size/2, size/2 - 15, -(Math.PI / 2), ((Math.PI * 2) * current) - Math.PI / 2, false);
+        ctx.stroke();
+        currentPercent += 2;
+        if (currentPercent < endPercent) {
+            requestAnimationFrame(function () {
+                animate(currentPercent / 100)
+            });
+        } else {
+            ctx.clearRect(x*size, y*size, size, size);
+            renderSquare(x,y);
+        }
+    }
+    animate();
+}
+
+function renderSquare(x, y, noDisk) {
     if((x + y) % 2 == 1) {
         ctx.fillStyle = '#006400';
     }
@@ -48,6 +75,8 @@ function renderSquare(x, y) {
     }
     ctx.fillRect(x*size, y*size, size, size);
     if(state.board[y][x]) {
+        if(noDisk)
+            return;
         renderDisk(x, y);
     }
 }
@@ -68,7 +97,7 @@ function renderLegalMove(x, y){
     ctx.strokeStyle = state.turn === 'b'? 'black' : 'white';
     ctx.lineWidth = 10;
     ctx.beginPath();
-    ctx.arc(x*size+size/2, y*size+size/2, size/2 - 15, 0, Math.PI * 2);
+    ctx.arc(x * size + size / 2, y * size + size / 2, size / 2 - 15, 0, Math.PI * 2);
     ctx.stroke();
     ctx.globalAlpha = 1.0;
 }
@@ -209,19 +238,19 @@ function flipDisks(x, y){
 
         recolor.forEach(function(field){
             state.board[field.y][field.x] = state.turn;
-            ctx.clearRect(field.x * size, field.y * size, size, size);
-            renderSquare(field.x, field.y);
+            animateChange(field.x, field.y);
         });
     });
     state.turn = state.turn === 'b' ? 'w' : 'b';
 }
 
 function updateLegalMoves(x, y) {
-    for (i = 0; i < state.legalMoves.length; i++){
-        ctx.clearRect(state.legalMoves[i].x*size, state.legalMoves[i].y*size, size, size);
+    for (var i = 0; i < state.legalMoves.length; i++){
+        if(state.legalMoves[i].x === x && state.legalMoves[i].y === y) {
+            continue;
+        }
         renderSquare(state.legalMoves[i].x, state.legalMoves[i].y);
     }
-
     showMoves();
 }
 
@@ -233,8 +262,7 @@ function handleMouseDown(event){
         return;
 
     state.board[y][x] = state.turn;
-    ctx.clearRect(x*size, y*size, size, size);
-    renderSquare(x, y);
+    animateChange(x, y);
     flipDisks(x, y);
 
     //TODO zkontrolovat stav
