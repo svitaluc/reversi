@@ -12,23 +12,10 @@ var state = {
         [null, null, null, null, null, null, null, null],
         [null, null, null, null, null, null, null, null]
     ],
-    border: [
-        {y: 2, x: 2},
-        {y: 2, x: 3},
-        {y: 2, x: 4},
-        {y: 2, x: 5},
-        {y: 3, x: 2},
-        {y: 3, x: 5},
-        {y: 4, x: 2},
-        {y: 4, x: 5},
-        {y: 5, x: 2},
-        {y: 5, x: 3},
-        {y: 5, x: 4},
-        {y: 5, x: 5}
-    ],
     turn: 'b',
     legalMoves: [],
-    highlighted: null
+    highlighted: null,
+    passed: false
 };
 
 var ctx;
@@ -92,27 +79,76 @@ function renderLegalMoves(){
     });
 }
 
+function renderGameOver(){
+    var bcount = 0;
+    var wcount = 0;
+    for(var i = 0; i < 8; i++){
+        for(var j = 0; j < 8; j++){
+            if(state.board[j][i] === 'b'){
+                bcount++;
+            }
+            else if (state.board[j][i] === 'w'){
+                wcount++
+            }
+        }
+    }
+    if (bcount === wcount){
+        var text = "IT'S A TIE!\n"+bcount+" to "+wcount;
+    }
+    else {
+        if (bcount > wcount) {
+            text = "BLACK WINS!\n"+bcount+" to "+wcount;
+        }
+        else {
+            text = "WHITE WINS!\n"+wcount+" to "+bcount;
+        }
+    }
+
+}
+
+function resolveNoLegalMoves(){
+    if(state.passed){
+        renderGameOver();
+    }
+    else {
+        //player cannot do any move, the game is passed to the opponent
+        state.turn = state.turn === 'b' ? 'w' : 'b';
+        state.passed = true;
+        showMoves();
+    }
+}
+
 function showMoves() {
     state.legalMoves = [];
-    state.border.forEach(function(field){
-        directions.forEach(function(direction){
-            var x = field.x + direction.x;
-            var y = field.y + direction.y;
-            if (x > -1 && x < 9 && y > -1 && y < 9){
-                if(state.board[y][x] && state.board[y][x] !== state.turn){
-                    for(var i = x + direction.x, j = y + direction.y; i > -1, i < 9, j > -1, j < 9; i += direction.x, j += direction.y){
-                        if(!state.board[j][i])
-                            break;
-                        if(state.board[j][i] === state.turn){
-                            state.legalMoves.push({y: field.y, x: field.x});
+    for(var i = 0; i < 8; i++) {
+        for (var j = 0; j < 8; j++){
+            var field = {x: i, y: j};
+            if(state.board[j][i])
+                continue;
+            directions.forEach(function(direction){
+                var x = field.x + direction.x;
+                var y = field.y + direction.y;
+                if (x > -1 && x < 8 && y > -1 && y < 8){
+                    if(state.board[y][x] && state.board[y][x] !== state.turn){
+                        for(var i = x + direction.x, j = y + direction.y; (i > -1) && (i < 8) && (j > -1) && (j < 8); i += direction.x, j += direction.y){
+                            if(!state.board[j][i])
+                                break;
+                            if(state.board[j][i] === state.turn){
+                                state.legalMoves.push({y: field.y, x: field.x});
+                            }
                         }
                     }
                 }
-            }
-        })
-    });
-    //TODO case when no legal moves are available (need to pass)
-    renderLegalMoves();
+            })
+        }
+    }
+    if(state.legalMoves.length < 1){
+        resolveNoLegalMoves();
+    }
+    else {
+        renderLegalMoves();
+        state.passed = false;
+    }
 }
 
 function isInLegalMoves(x, y) {
@@ -151,7 +187,7 @@ function handleMouseMove(event){
 function flipDisks(x, y){
     directions.forEach(function(direction){
         var recolor = [];
-        for (var i = x + direction.x, j = y + direction.y; i > -1, i < 9, j > -1, j < 9; i += direction.x, j += direction.y) {
+        for (var i = x + direction.x, j = y + direction.y; (i > -1) && (i < 8) && (j > -1) && (j < 8); i += direction.x, j += direction.y) {
             if (state.board[j][i]) {
                 if (state.board[j][i] !== state.turn) {
                     recolor.push({y: j, x: i});
@@ -165,6 +201,11 @@ function flipDisks(x, y){
                 return;
             }
         }
+        // case in which we are on the border and the disk we reached is opponent's one -> there are no disks to recolor
+        if(((i === 7) || (i === 0) || (j === 7) || (j === 0)) && ((i > -1) && (i < 8) && (j > -1) && (j < 8))){
+            if(state.board[j][i] && state.board[j][i] !== state.turn)
+                recolor = [];
+        }
 
         recolor.forEach(function(field){
             state.board[field.y][field.x] = state.turn;
@@ -176,20 +217,6 @@ function flipDisks(x, y){
 }
 
 function updateLegalMoves(x, y) {
-    for (var i = 0; i < state.border.length; i++){
-        if(state.border[i].x === x && state.border[i].y === y) {
-            state.border.splice(i, 1);
-        }
-    }
-
-    directions.forEach(function(direction){
-        var x = x + direction.x;
-        var y = y + direction.y;
-        if (x > -1 && x < 9 && y > -1 && y < 9 && !state.board[y][x]){
-            state.border.push({y: y, x: x});
-        }
-    });
-
     for (i = 0; i < state.legalMoves.length; i++){
         ctx.clearRect(state.legalMoves[i].x*size, state.legalMoves[i].y*size, size, size);
         renderSquare(state.legalMoves[i].x, state.legalMoves[i].y);
