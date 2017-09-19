@@ -203,7 +203,7 @@ function renderGameOver(){
                 }
             }
             renderScoreBoard(text,score);
-            currentPercent += 0.25;
+            currentPercent += 0.5;
             if(currentPercent < endPercent){
                 requestAnimationFrame(function(){
                     animate(currentPercent/100)
