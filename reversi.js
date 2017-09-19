@@ -28,6 +28,11 @@ var directions = [
     {y: 1, x: -1}, {y: 1, x: 0}, {y: 1, x: 1}
 ];
 
+/**@function renderDisk
+ * Renders white or black arc in the square
+ * @param x - x coordinate of the square where the disk should be drawn
+ * @param y - y coordinate of the square where the disk should be drawn
+ */
 function renderDisk(x, y) {
     ctx.beginPath();
     if(state.board[y][x].charAt(0) === 'w') {
@@ -39,6 +44,11 @@ function renderDisk(x, y) {
     ctx.fill();
 }
 
+/**@function animateChange
+ * Animates change of the disk - either new or captured disk is first animated with running stroke line
+ * @param x - x coordinate of the square where the disk should be animated
+ * @param y - y coordinate of the square where the disk should be animated
+ */
 function animateChange(x, y){
     var endPercent = 110;
     var currentPercent = 0;
@@ -66,6 +76,12 @@ function animateChange(x, y){
     animate();
 }
 
+/**@function renderSquare
+ * Renders a small green square. If a disk is present on that square, it redraws it as well.
+ * @param x - x coordinate of the square to be rendered
+ * @param y - y coordinate of the square to be rendered
+ * @param noDisk - set true if no disk should be rendered in the square
+ */
 function renderSquare(x, y, noDisk) {
     if((x + y) % 2 == 1) {
         ctx.fillStyle = '#006400';
@@ -81,6 +97,9 @@ function renderSquare(x, y, noDisk) {
     }
 }
 
+/**@function renderBoard
+ * Renders the whole 8x8 game board.
+ */
 function renderBoard() {
     if(!ctx) return;
     for(var y = 0; y < 8; y++) {
@@ -90,6 +109,11 @@ function renderBoard() {
     }
 }
 
+/**@function renderLegalMove
+ * Renders all legal moves, that is a ring where a move is possible to be made.
+ * @param x - x coordinate of the legal move
+ * @param y - y coordinate of the legal move
+ */
 function renderLegalMove(x, y){
     ctx.clearRect(x*size, y*size, size, size);
     renderSquare(x, y);
@@ -102,12 +126,34 @@ function renderLegalMove(x, y){
     ctx.globalAlpha = 1.0;
 }
 
+/**@function renderLegalMoves
+ * Renders all legal moves, that is rings where a move is possible to be made.
+ */
 function renderLegalMoves(){
     state.legalMoves.forEach(function(field){
         renderLegalMove(field.x, field.y);
     });
 }
 
+/**@function renderScoreBoard
+ * Renders the final score board.
+ * @param text - text describing a winner or a tie
+ * @param score - actual score of the game
+ */
+function renderScoreBoard(text, score){
+    ctx.clearRect(size, 2*size, 6*size, 3*size);
+    ctx.fillStyle = '#006400';
+    ctx.fillRect(size, 2*size, 6*size, 3*size);
+    ctx.fillStyle = '#ffd700';
+    ctx.textAlign = "center";
+    ctx.font = '90px arial';
+    ctx.fillText(text, 4*size, 3*size);
+    ctx.fillText(score,4*size,4*size);
+}
+
+/**@function renderGameOver
+ * Handles all the rendering after the game is finished.
+ */
 function renderGameOver(){
     var bcount = 0;
     var wcount = 0;
@@ -122,19 +168,64 @@ function renderGameOver(){
         }
     }
     if (bcount === wcount){
-        var text = "IT'S A TIE!\n"+bcount+" to "+wcount;
+        var text = "IT'S A TIE!";
+        var score = bcount+" to "+wcount;
+        setTimeout(function(){
+            ctx.clearRect(0, 0, 8*size, 8*size);
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, 4*size, 8*size);
+            renderScoreBoard(text, score);
+        }, 2000);
     }
     else {
         if (bcount > wcount) {
-            text = "BLACK WINS!\n"+bcount+" to "+wcount;
+            text = "BLACK WINS!";
+            score = bcount+" to "+wcount;
+            var winner = 'b';
         }
         else {
-            text = "WHITE WINS!\n"+wcount+" to "+bcount;
+            text = "WHITE WINS!";
+            score = wcount+" to "+bcount;
+            winner = 'w';
         }
+        var currentPercent = 100;
+        var endPercent = 700;
+
+        function animate(current) {
+            ctx.fillStyle = winner === 'w' ? '#fff' : '#000';
+            for(var i = 0; i < 8; i++){
+                for(var j = 0; j < 8; j++){
+                    if(state.board[j][i].charAt(0) !== winner)
+                        continue;
+                    ctx.beginPath();
+                    ctx.arc(i*size+size/2, j*size+size/2, (size/2 - 10)*current, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            renderScoreBoard(text,score);
+            currentPercent += 0.25;
+            if(currentPercent < endPercent){
+                requestAnimationFrame(function(){
+                    animate(currentPercent/100)
+                })
+            }
+            else {
+                ctx.clearRect(0, 0, 8*size, 8*size);
+                ctx.fillStyle = winner === 'w' ? '#fff' : '#000';
+                ctx.fillRect(0, 0, 8*size, 8*size);
+                renderScoreBoard(text, score);
+            }
+        }
+        setTimeout(function(){
+            animate();
+        }, 1500);
     }
 
 }
 
+/**@function resolveNoLegalMoves
+ * Resolves the situation when no legal moves are available.
+ */
 function resolveNoLegalMoves(){
     if(state.passed){
         renderGameOver();
@@ -147,6 +238,9 @@ function resolveNoLegalMoves(){
     }
 }
 
+/**@function showMoves
+ * Finds all legal moves and calls their rendering.
+ */
 function showMoves() {
     state.legalMoves = [];
     for(var i = 0; i < 8; i++) {
@@ -180,6 +274,12 @@ function showMoves() {
     }
 }
 
+/**@function isInLegalMoves
+ * Checks if a move is a legal one.
+ * @param x - x coordinate of the square to be checked
+ * @param y - y coordinate of the square to be checked
+ * @returns {boolean} - true if the move is legal, false otherwise
+ */
 function isInLegalMoves(x, y) {
     if (!state.legalMoves)
         return false;
@@ -190,6 +290,10 @@ function isInLegalMoves(x, y) {
     return false;
 }
 
+/**@function handleMouseMove
+ * Handles mouse hovering the board.
+ * @param event - mouse event
+ */
 function handleMouseMove(event){
     var x = Math.floor(event.clientX/size*2);
     var y = Math.floor(event.clientY/size*2);
@@ -213,6 +317,11 @@ function handleMouseMove(event){
     }
 }
 
+/**@function flipDisks
+ * Flips all the disks that were captured by the move.
+ * @param x - x coordinate of the new move which has been made
+ * @param y - y coordinate of the new move which has been made
+ */
 function flipDisks(x, y){
     directions.forEach(function(direction){
         var recolor = [];
@@ -244,6 +353,11 @@ function flipDisks(x, y){
     state.turn = state.turn === 'b' ? 'w' : 'b';
 }
 
+/**@function updateLegalMoves
+ * Updates legal moves when the players switch
+ * @param x - x coordinate of the last move
+ * @param y - y coordinate of the last move
+ */
 function updateLegalMoves(x, y) {
     for (var i = 0; i < state.legalMoves.length; i++){
         if(state.legalMoves[i].x === x && state.legalMoves[i].y === y) {
@@ -254,6 +368,10 @@ function updateLegalMoves(x, y) {
     showMoves();
 }
 
+/**@function handleMouseDown
+ * Handles an action when the mouse button is clicked.
+ * @param event - mouse event
+ */
 function handleMouseDown(event){
     var x = Math.floor(event.clientX/size*2);
     var y = Math.floor(event.clientY/size*2);
@@ -265,11 +383,13 @@ function handleMouseDown(event){
     animateChange(x, y);
     flipDisks(x, y);
 
-    //TODO zkontrolovat stav
     state.highlighted = null;
     updateLegalMoves(x, y);
 }
 
+/**@function setup
+ * Sets the entire game up.
+ */
 function setup() {
     var canvas = document.createElement('canvas');
     canvas.width = size*8;
